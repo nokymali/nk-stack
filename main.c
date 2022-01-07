@@ -11,7 +11,7 @@
 #include <sys/time.h>
 #include "nk-stack.h"
 
-#define STACK_DEFAULT_SIZE 100
+#define STACK_DEFAULT_SIZE 99
 #define NAME_LENGHT 32
 
 #ifndef TRACE

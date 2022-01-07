@@ -30,17 +30,16 @@
 #define PTR_SIZE (sizeof(void *))
 #define PAGE_SIZE (getpagesize())
 
-
-#define NK_STACK_STORE_PTR(s, p) (((s)->chunk_curr) + ((p) * PTR_SIZE)) + PTR_SIZE)
-
+#define NK_STACK_CURR_PTR(s) (((s)->chunk_curr) + (((s)->chunk_pos) * PTR_SIZE) + PTR_SIZE)
+#define NK_STACK_PREV_PTR(s) (((s)->chunk_curr) + ((((s)->chunk_pos) - 1) * PTR_SIZE) + PTR_SIZE)
 
 struct _nk_stack {
     uint8_t  mode;
-    int chunk_size;                 /**< a chunk size*/
-    int chunk_max;                  /**< a chunk include item count*/
-    volatile int chunk_pos;         /**< a chunk position*/
+    int chunk_size;                 /**< each chunk size*/
+    int chunk_max;                  /**< each chunk include item count*/
+    volatile int chunk_pos;         /**< a current chunk position*/
     int chunk_items;                /**< all chunk's items count*/
-    int chunk_count;                /**< chunk count*/
+    int chunk_count;                /**< alloc chunk's count*/
     void *chunk_curr;               /**< current chunk ptr, look like single linked list*/
     void *chunk_recycle;            /**< can re-used chunk*/
 };
@@ -62,7 +61,7 @@ static inline __attribute__((always_inline)) nk_stack *nk_stack_create_option(in
         size += (pgsz - (size % pgsz));
     */
 
-    /**< multiple of PTR_SIZE*/
+    /**< multiple of PTR_SIZE align with PTR_SIZE*/
     if (size % PTR_SIZE)
         size += (PTR_SIZE - (size % PTR_SIZE));
     
@@ -106,7 +105,7 @@ int nk_stack_destroy(nk_stack *stack) {
         return 0;
 
     void *ptr = NULL;
-    /**< destroy curent chunks*/
+    /**< destroy current chunks*/
     while ((ptr = stack->chunk_curr)) {
         printf("Destroy current chunk[%02d] %p\n", stack->chunk_count, ptr);
         stack->chunk_curr = *(void **)ptr;
@@ -117,7 +116,7 @@ int nk_stack_destroy(nk_stack *stack) {
     
     /**< destroy recycle chunks*/
     while ((ptr = stack->chunk_recycle)) {
-        printf("Detroy recycle chunk[%02d] %p\n", stack->chunk_count, ptr);
+        printf("Destroy recycle chunk[%02d] %p\n", stack->chunk_count, ptr);
         stack->chunk_recycle = *(void **)ptr;
         free(ptr);
         ptr = NULL;
@@ -145,10 +144,8 @@ int nk_stack_push(nk_stack * const stack, void *item) {
 
     /**< check current chunk */
     if (NULL == stack->chunk_curr) {
-
         /**< check recycle chunk*/
         if (NULL == stack->chunk_recycle) {
-
             /**< recycle chunk is NULL, so create new chunk*/
             void *chunk = (void *)calloc(stack->chunk_size, PTR_SIZE);
             *(void **)chunk = stack->chunk_curr;
@@ -169,7 +166,9 @@ int nk_stack_push(nk_stack * const stack, void *item) {
     }
     
     /**< push element to current chunk*/
-    void *store = stack->chunk_curr + (stack->chunk_pos * PTR_SIZE) + PTR_SIZE;
+    /**< void *store = stack->chunk_curr + (stack->chunk_pos * PTR_SIZE) + PTR_SIZE;*/
+    void *store = NK_STACK_CURR_PTR(stack);
+
     *(void **)store = item;
     stack->chunk_pos += 1;
     stack->chunk_items += 1;
@@ -178,7 +177,7 @@ int nk_stack_push(nk_stack * const stack, void *item) {
            stack->chunk_count, stack->chunk_curr, store, stack->chunk_items, stack->chunk_pos, item);
 #endif
 
-    /**< current chunk is full.*/
+    /**< current chunk is full. get new chunk to store item*/
     if (stack->chunk_pos == stack->chunk_max) {
 
         /**< get exist chunk from recycle chunks*/
@@ -193,7 +192,7 @@ int nk_stack_push(nk_stack * const stack, void *item) {
             stack->chunk_curr = chunk;
         } else {
 
-            /**< calloc new chunk*/
+            /**< alloc new chunk*/
             void *chunk = (void *)calloc(stack->chunk_size, PTR_SIZE);
             *(void **)chunk = stack->chunk_curr;
             stack->chunk_curr = chunk;
@@ -211,12 +210,12 @@ void *nk_stack_pop(nk_stack * const stack) {
     if (unlikely(stack->chunk_curr == NULL))
         return NULL;
 
-    /**< get element from current chunk*/
-    void *element = stack->chunk_curr + ((stack->chunk_pos - 1) * PTR_SIZE) + PTR_SIZE;
-
+    /**< get item from current chunk*/
+    /**< void *item = stack->chunk_curr + ((stack->chunk_pos - 1) * PTR_SIZE) + PTR_SIZE; */
+    void *item = NK_STACK_PREV_PTR(stack);
 #if TRACE
-    printf("nk_stack { Pop}. chunk[%02d]: %p, pos: %p, index: %02d, element[%02d]: %p\n",
-           stack->chunk_count, stack->chunk_curr, element, stack->chunk_items, stack->chunk_pos, *(void **)element);
+    printf("nk_stack { Pop}. chunk[%02d]: %p, pos: %p, index: %02d, item[%02d]: %p\n",
+           stack->chunk_count, stack->chunk_curr, item, stack->chunk_items, stack->chunk_pos, *(void **)item);
 #endif
     stack->chunk_pos -= 1;
     stack->chunk_items -= 1;
@@ -233,22 +232,23 @@ void *nk_stack_pop(nk_stack * const stack) {
         stack->chunk_recycle = chunk;
         stack->chunk_pos = stack->chunk_max;
     }
-    return *(void **)element;
+    return *(void **)item;
 }
 
 void *nk_stack_peek(nk_stack * const stack) {
     if (NULL == stack || NULL == stack->chunk_curr)
         return NULL;
 
-    /**< nk-stack top element*/
-    void *element = stack->chunk_curr + ((stack->chunk_pos - 1) * PTR_SIZE) + PTR_SIZE;
+    /**< nk-stack top item*/
+    /**< void *item = stack->chunk_curr + ((stack->chunk_pos - 1) * PTR_SIZE) + PTR_SIZE;*/
+    void *item = NK_STACK_PREV_PTR(stack);
 
 #if TRACE
-    printf("nk_stack {Peek}. chunk[%02d]: %p, pos: %p, index: %02d, element[%02d]: %p\n",
-           stack->chunk_count, stack->chunk_curr, element, stack->chunk_items, stack->chunk_pos, *(void **)element);
+    printf("nk_stack {Peek}. chunk[%02d]: %p, pos: %p, index: %02d, item[%02d]: %p\n",
+           stack->chunk_count, stack->chunk_curr, item, stack->chunk_items, stack->chunk_pos, *(void **)item);
 #endif
 
-    return *(void **)element;
+    return *(void **)item;
 }
 
 void nk_stack_info(nk_stack * const stack) {
