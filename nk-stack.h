@@ -1,10 +1,7 @@
 //
 //  nk-stack.h
-//  0011-Demo.C.nk-stack
 //
-//  Created by ma li on 2021/12/11.
 //
-
 #ifndef nk_stack_h
 #define nk_stack_h
 #include <stdio.h>
@@ -22,7 +19,7 @@ typedef struct _nk_stack nk_stack;
 
 /**
  * nk-stack auto mode create
- * @param size nk-stack capacity size
+ * @param  size  nk-stack capacity size
  * @return nk-stack object
  */
 nk_stack *nk_stack_auto_create(int size);
@@ -92,6 +89,5 @@ void *nk_stack_peek(nk_stack * const stack);
  * @param stack nk-stack object.
  */
 void nk_stack_info(nk_stack * const stack);
-
 
 #endif /* nk_stack_h */

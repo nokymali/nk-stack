@@ -1,8 +1,7 @@
 //
 //  main.c
-//  0011-Demo.C.nk-stack-optimize-01
+//  for test nk-stack.
 //
-//  Created by ma li on 2021/12/12.
 //
 
 #include <stdio.h>

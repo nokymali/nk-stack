@@ -1,6 +1,5 @@
 //
 //  nk-stack.c
-//  0011-Demo.C.nk-stack
 //
 //  ============explain==============
 //  /**< which chunk, 0, 1, 2,.....*/
@@ -13,12 +12,10 @@
 //
 //  stack->chunk_items: all of the stack count
 //
-//  Created by ma li on 2021/12/11.
 //
 #include <unistd.h>
 #include <assert.h>
 #include "nk-stack.h"
-
 
 //#define TRACE
 
@@ -37,15 +34,15 @@ struct _nk_stack {
     uint8_t  mode;
     int chunk_size;                 /**< each chunk size*/
     int chunk_max;                  /**< each chunk include item count*/
-    volatile int chunk_pos;         /**< a current chunk position*/
+    int chunk_pos;                  /**< a current chunk position*/
     int chunk_items;                /**< all chunk's items count*/
     int chunk_count;                /**< alloc chunk's count*/
     void *chunk_curr;               /**< current chunk ptr, look like single linked list*/
     void *chunk_recycle;            /**< can re-used chunk*/
 };
 
-static inline __attribute__((always_inline)) nk_stack *nk_stack_create_option(int size, int mode) {
 
+static inline __attribute__((always_inline)) nk_stack *nk_stack_create_option(int size, int mode) {
     nk_stack *stack = (nk_stack *)calloc(1, sizeof(nk_stack));
     if (unlikely(stack == NULL)) {
         assert("Fail to create nk_stack.\n");
