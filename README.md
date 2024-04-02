@@ -11,7 +11,7 @@ this version only provides basic functionality. it is not multi-thread safe
 just make , the target is "nk-stack"     
 
 # Usage.  
-
+./nk-stack
 
 # Badge.  
 # Rleated Efforts  
